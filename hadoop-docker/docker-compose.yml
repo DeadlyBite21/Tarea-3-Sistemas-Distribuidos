@@ -1,0 +1,96 @@
+version: "3.8"
+
+services:
+  # --- 1. Master de HDFS (Almacenamiento) ---
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    hostname: namenode
+    restart: always
+    ports:
+      - "9870:9870"  # Interfaz web de HDFS
+      - "9000:9000"  # Puerto de acceso a HDFS
+    volumes:
+      - namenode-data:/hadoop/dfs/name
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+    networks:
+      - hadoop-net
+
+  # --- 2. Esclavo de HDFS (Almacenamiento) ---
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    hostname: datanode
+    restart: always
+    depends_on:
+      - namenode
+    volumes:
+      - datanode-data:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870" # Espera a que el namenode esté listo
+    networks:
+      - hadoop-net
+
+  # --- 3. Master de YARN (Procesamiento MapReduce) ---
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    hostname: resourcemanager
+    restart: always
+    depends_on:
+      - namenode
+      - datanode
+    ports:
+      - "8088:8088"  # Interfaz web de YARN (MapReduce)
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870 datanode:9864" # Espera a ambos
+    networks:
+      - hadoop-net
+
+  # --- 4. Esclavo de YARN (Procesamiento MapReduce) ---
+  nodemanager:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: nodemanager
+    hostname: nodemanager
+    restart: always
+    depends_on:
+      - resourcemanager
+    environment:
+      SERVICE_PRECONDITION: "resourcemanager:8088" # Espera al resourcemanager
+    networks:
+      - hadoop-net
+
+  # --- 5. Cliente de Pig (Tu "consola" para lanzar trabajos) ---
+  pig-client:
+    image: bde2020/hadoop-pig:0.17.0-hadoop3.2.1-java8
+    container_name: pig-client
+    hostname: pig-client
+    depends_on:
+      - namenode
+      - resourcemanager
+    volumes:
+      # Monta tus scripts de Pig en el contenedor
+      - ../scripts-pig:/app/scripts 
+      # Monta los datos que vas a subir a HDFS
+      - ../data_compartida:/app/data_input
+      # Monta una carpeta para descargar los resultados
+      - ../data-output:/app/data_output
+    environment:
+      - HADOOP_CONF_DIR=/etc/hadoop
+      - HADOOP_USER_NAME=root # Evita problemas de permisos en Docker
+    networks:
+      - hadoop-net
+    # Mantiene el contenedor vivo para que puedas entrar
+    command: tail -f /dev/null 
+
+# --- Red y Volúmenes ---
+networks:
+  hadoop-net:
+    driver: bridge
+
+volumes:
+  namenode-data:
+    driver: local
+  datanode-data:
+    driver: local
