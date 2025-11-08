@@ -28,7 +28,7 @@ services:
     volumes:
       - datanode-data:/hadoop/dfs/data
     environment:
-      SERVICE_PRECONDITION: "namenode:9870" # Espera a que el namenode esté listo
+      SERVICE_PRECONDITION: "namenode:9870"
     networks:
       - hadoop-net
 
@@ -42,9 +42,9 @@ services:
       - namenode
       - datanode
     ports:
-      - "8088:8088"  # Interfaz web de YARN (MapReduce)
+      - "8088:8088"  # Interfaz web de YARN
     environment:
-      SERVICE_PRECONDITION: "namenode:9870 datanode:9864" # Espera a ambos
+      SERVICE_PRECONDITION: "namenode:9870 datanode:9864"
     networks:
       - hadoop-net
 
@@ -57,31 +57,34 @@ services:
     depends_on:
       - resourcemanager
     environment:
-      SERVICE_PRECONDITION: "resourcemanager:8088" # Espera al resourcemanager
+      SERVICE_PRECONDITION: "resourcemanager:8088"
     networks:
       - hadoop-net
 
   # --- 5. Cliente de Pig (Tu "consola" para lanzar trabajos) ---
   pig-client:
-    image: bde2020/hadoop-pig:0.17.0-hadoop3.2.1-java8
+    image: bde2020/hadoop-pig:0.17.0-hadoop3.2.1-java8 # <-- ¡Esta imagen es perfecta!
     container_name: pig-client
     hostname: pig-client
     depends_on:
       - namenode
       - resourcemanager
     volumes:
-      # Monta tus scripts de Pig en el contenedor
-      - ../scripts-pig:/app/scripts 
-      # Monta los datos que vas a subir a HDFS
-      - ../data_compartida:/app/data_input
-      # Monta una carpeta para descargar los resultados
-      - ../data-output:/app/data_output
+      # Asume que las carpetas están al MISMO NIVEL que tu docker-compose.yml
+      - ./scripts-pig:/app/scripts 
+      - ./data_compartida:/app/data_input
+      - ./data-output:/app/data_output
     environment:
+      # --- INICIO DE AJUSTES ---
+      # 1. Le dice a Pig (y Hadoop) dónde está el NameNode (HDFS)
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+      # 2. Le dice a Pig (y YARN) dónde está el ResourceManager para enviar trabajos
+      - YARN_CONF_yarn_resourcemanager_address=resourcemanager:8032
+      # --- FIN DE AJUSTES ---
       - HADOOP_CONF_DIR=/etc/hadoop
-      - HADOOP_USER_NAME=root # Evita problemas de permisos en Docker
+      - HADOOP_USER_NAME=root
     networks:
       - hadoop-net
-    # Mantiene el contenedor vivo para que puedas entrar
     command: tail -f /dev/null 
 
 # --- Red y Volúmenes ---
