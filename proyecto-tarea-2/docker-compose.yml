@@ -105,5 +105,28 @@ services:
     depends_on:
       - kafka
 
+  # --- ▼▼▼ SERVICIO NUEVO AÑADIDO ▼▼▼ ---
+  exporter:
+    image: python:3.10-slim  # Imagen simple de Python
+    container_name: exporter
+    volumes:
+      # 1. Monta el script que creaste (asume que está junto a este yml)
+      - ./exportador.py:/app/exportador.py
+      
+      # 2. Monta el volumen de la BDD (solo lectura)
+      - storage_data:/app/data:ro
+      
+      # 3. Monta la carpeta 'generator' para leer el CSV (solo lectura)
+      - ./generator:/app/generator_data:ro
+      
+      # 4. 🔴 ¡¡IMPORTANTE!! EDITA LA RUTA A TU TAREA 3 🔴
+      #    Esta línea apunta a la carpeta de datos de tu Tarea 3
+      - ../proyecto-tarea-3/data_compartida:/app/output
+      
+    working_dir: /app
+    # Ejecuta el script y luego se detiene
+    command: python exportador.py
+  # --- ▲▲▲ FIN DEL SERVICIO NUEVO ▲▲▲ ---
+
 volumes:
-  storage_data: {}
+  storage_data: {} #
