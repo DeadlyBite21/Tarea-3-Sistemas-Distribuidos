@@ -1,46 +1,19 @@
-version: '3'
+version: "3.8"
+
 services:
-  namenode:
-    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
-    container_name: namenode
-    volumes:
-      - ./data:/user/input  # Carpeta local mapeada para subir el dataset
-      - ./scripts:/scripts  # Carpeta para tus scripts .pig
-    environment:
-      - CLUSTER_NAME=test
-    env_file:
-      - ./hadoop.env
+  hadoop-pig:
+    image: suhothayan/hadoop-spark-pig-hive:2.9.2
+    container_name: sd-t3-hadoop-pig
+    hostname: sd-t3-hadoop-pig
+    stdin_open: true
+    tty: true
     ports:
-      - "9870:9870"
-      - "9000:9000"
-
-  datanode:
-    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
-    container_name: datanode
+      - "50070:50070"   # HDFS UI
+      - "8088:8088"     # YARN UI
+      - "8080:8080"     # Spark/Hive UI
     volumes:
-      - hadoop_datanode:/hadoop/dfs/data
-    env_file:
-      - ./hadoop.env
-    environment:
-      - SERVICE_PRECONDITION=namenode:9870
-    depends_on:
-      - namenode
-
-  # Contenedor con Pig instalado para ejecutar los trabajos
-  pig-client:
-    build: ./pig-image   # <--- CAMBIO IMPORTANTE: Construye desde la carpeta que creamos
-    container_name: pig-client
-    volumes:
-      - ./data:/user/input
-      - ./scripts:/scripts
-    environment:
-      - HADOOP_CONF_DIR=/etc/hadoop
-    env_file:
-      - ./hadoop.env
-    command: tail -f /dev/null
-    depends_on:
-      - namenode
-      - datanode
-
-volumes:
-  hadoop_datanode:
+      # 1. Mapeamos tu carpeta de experimentos local a /data en el contenedor
+      - ./experiments_results/Tarea3:/data
+      
+      # 2. Mapeamos tu carpeta de servicios local a /pig en el contenedor
+      - ./Servicios/HadoopPig:/pig
