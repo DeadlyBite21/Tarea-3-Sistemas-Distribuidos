@@ -109,3 +109,39 @@ docker exec -it namenode hdfs dfs -getmerge /user/output/human_top_50 /user/inpu
 ```bash
 docker exec -it namenode hdfs dfs -getmerge /user/output/llm_top_50 /user/input/llm_top_50.csv
 ```
+
+---
+
+## ❓ Solución de Problemas Comunes
+
+### 1. Error: `Incompatible clusterIDs`
+
+**Síntoma:** El servicio `datanode` se apaga inmediatamente después de iniciar y en los logs aparece:
+`java.io.IOException: Incompatible clusterIDs`
+
+**Causa:** El `namenode` fue formateado (se creó un nuevo ID de cluster) pero el volumen del `datanode` conserva datos del cluster anterior.
+
+**Solución:**
+Debes eliminar los volúmenes y reiniciar el cluster para que todo se sincronice desde cero.
+
+```bash
+# Bajar servicios y borrar volúmenes
+docker-compose down -v
+
+# Volver a levantar
+docker-compose up --build
+```
+
+### 2. Error: `Output directory already exists`
+
+**Síntoma:** Al ejecutar el script de Pig, falla indicando que el directorio de salida ya existe.
+
+**Causa:** Hadoop no permite sobrescribir directorios de salida por seguridad. Si ejecutaste el script previamente, la carpeta `/user/output` ya fue creada.
+
+**Solución:**
+Elimina el directorio de salida en HDFS antes de volver a correr el script.
+
+```bash
+docker exec -it namenode hdfs dfs -rm -r /user/output
+```
+
